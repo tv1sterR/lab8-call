@@ -34,8 +34,12 @@ public class P2PNode {
     }
 
     public void startListening() {
+        // TCP-сервер
         serverThread = new Thread(this::runServer, "TCP-Server-Thread");
         serverThread.start();
+
+        // ВСЕГДА слушаем свой UDP-порт (двусторонний звук)
+        audioReceiver.startReceiving(udpPort);
     }
 
     private void runServer() {
@@ -64,8 +68,8 @@ public class P2PNode {
         }, "TCP-Client-Thread").start();
     }
 
+    // запуск ТОЛЬКО отправки аудио (приём уже запущен в startListening)
     public void startAudio(String peerHost, int peerUdpPort) {
-        audioReceiver.startReceiving(udpPort);
         audioSender.startSending(peerHost, peerUdpPort);
     }
 

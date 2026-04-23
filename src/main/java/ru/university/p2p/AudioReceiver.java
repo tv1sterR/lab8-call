@@ -8,9 +8,10 @@ import java.net.DatagramSocket;
 public class AudioReceiver {
 
     private SourceDataLine speakers;
-    private boolean running = false;
+    private volatile boolean running = false;
 
     public void startReceiving(int port) {
+        if (running) return;
         running = true;
 
         new Thread(() -> {
@@ -28,13 +29,14 @@ public class AudioReceiver {
                 while (running) {
                     DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                     socket.receive(packet);
-
                     speakers.write(packet.getData(), 0, packet.getLength());
                 }
 
                 speakers.stop();
                 speakers.close();
                 socket.close();
+
+                System.out.println("[AUDIO] Приём аудио остановлен");
 
             } catch (LineUnavailableException | IOException e) {
                 System.err.println("[AUDIO] Ошибка приёма аудио: " + e.getMessage());

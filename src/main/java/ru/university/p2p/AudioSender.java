@@ -9,9 +9,10 @@ import java.net.InetAddress;
 public class AudioSender {
 
     private TargetDataLine microphone;
-    private boolean running = false;
+    private volatile boolean running = false;
 
     public void startSending(String host, int port) {
+        if (running) return;
         running = true;
 
         new Thread(() -> {
@@ -30,13 +31,17 @@ public class AudioSender {
 
                 while (running) {
                     int bytesRead = microphone.read(buffer, 0, buffer.length);
-                    DatagramPacket packet = new DatagramPacket(buffer, bytesRead, address, port);
-                    socket.send(packet);
+                    if (bytesRead > 0) {
+                        DatagramPacket packet = new DatagramPacket(buffer, bytesRead, address, port);
+                        socket.send(packet);
+                    }
                 }
 
                 microphone.stop();
                 microphone.close();
                 socket.close();
+
+                System.out.println("[AUDIO] Отправка аудио остановлена");
 
             } catch (LineUnavailableException | IOException e) {
                 System.err.println("[AUDIO] Ошибка отправки аудио: " + e.getMessage());
@@ -50,11 +55,11 @@ public class AudioSender {
 
     private AudioFormat getFormat() {
         return new AudioFormat(
-                16000,   // частота дискретизации
-                16,      // битность
-                1,       // моно
-                true,    // signed
-                false    // little-endian
+                16000,
+                16,
+                1,
+                true,
+                false
         );
     }
 }
