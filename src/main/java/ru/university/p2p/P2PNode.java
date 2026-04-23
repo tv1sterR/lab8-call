@@ -10,13 +10,19 @@ public class P2PNode {
     private final int tcpPort;
     private final int udpPort;
 
-    private ServerSocket serverSocket;
     private Thread serverThread;
+
+    private final AudioSender audioSender = new AudioSender();
+    private final AudioReceiver audioReceiver = new AudioReceiver();
 
     public P2PNode(String nickname) {
         this.nickname = nickname;
-        this.tcpPort = PortUtil.findFreePort();      // индивидуальный вариант
-        this.udpPort = PortUtil.findFreePort();      // можно другой свободный
+        this.tcpPort = PortUtil.findFreePort();
+        this.udpPort = PortUtil.findFreePort();
+    }
+
+    public String getNickname() {
+        return nickname;
     }
 
     public int getTcpPort() {
@@ -27,25 +33,18 @@ public class P2PNode {
         return udpPort;
     }
 
-    public String getNickname() {
-        return nickname;
-    }
-
-    // запуск ожидания входящих TCP-соединений
     public void startListening() {
         serverThread = new Thread(this::runServer, "TCP-Server-Thread");
         serverThread.start();
     }
 
     private void runServer() {
-        try (ServerSocket ss = new ServerSocket(tcpPort)) {
-            this.serverSocket = ss;
+        try (ServerSocket serverSocket = new ServerSocket(tcpPort)) {
             System.out.println("[TCP] Ожидание входящих соединений на порту " + tcpPort);
 
             while (!Thread.currentThread().isInterrupted()) {
-                Socket client = ss.accept();
+                Socket client = serverSocket.accept();
                 System.out.println("[TCP] Входящее соединение от " + client.getRemoteSocketAddress());
-                // передаём в обработчик сигнализации
                 CallSignaling.handleIncomingConnection(this, client);
             }
         } catch (IOException e) {
@@ -53,7 +52,6 @@ public class P2PNode {
         }
     }
 
-    // исходящее соединение к собеседнику
     public void callPeer(String host, int port) {
         new Thread(() -> {
             try {
@@ -64,5 +62,15 @@ public class P2PNode {
                 System.err.println("[TCP] Не удалось подключиться: " + e.getMessage());
             }
         }, "TCP-Client-Thread").start();
+    }
+
+    public void startAudio(String peerHost, int peerUdpPort) {
+        audioReceiver.startReceiving(udpPort);
+        audioSender.startSending(peerHost, peerUdpPort);
+    }
+
+    public void stopAudio() {
+        audioSender.stop();
+        audioReceiver.stop();
     }
 }

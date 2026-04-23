@@ -13,28 +13,37 @@ public class Main {
         String nick = console.readLine();
 
         P2PNode node = new P2PNode(nick);
-        System.out.println("Ваш TCP порт: " + node.getTcpPort());
-        System.out.println("Ваш UDP порт: " + node.getUdpPort());
+
+        System.out.println("=== P2P узел запущен ===");
+        System.out.println("Ник: " + node.getNickname());
+        System.out.println("TCP порт (сигнализация): " + node.getTcpPort());
+        System.out.println("UDP порт (аудио): " + node.getUdpPort());
 
         node.startListening();
 
         while (true) {
-            System.out.println("\nМеню:");
+            System.out.println();
+            System.out.println("Меню:");
             System.out.println("1 - Позвонить");
             System.out.println("0 - Выход");
             System.out.print("Выбор: ");
+
             String choice = console.readLine();
+            if (choice == null) break;
 
-            if ("0".equals(choice)) {
-                System.out.println("Выход...");
-                System.exit(0);
-            } else if ("1".equals(choice)) {
-                System.out.print("IP собеседника: ");
-                String host = console.readLine();
-                System.out.print("TCP порт собеседника: ");
-                int port = Integer.parseInt(console.readLine());
-
-                node.callPeer(host, port);
+            switch (choice) {
+                case "1" -> {
+                    System.out.print("IP собеседника: ");
+                    String host = console.readLine();
+                    System.out.print("TCP порт собеседника: ");
+                    int port = Integer.parseInt(console.readLine());
+                    node.callPeer(host, port);
+                }
+                case "0" -> {
+                    System.out.println("Выход...");
+                    System.exit(0);
+                }
+                default -> System.out.println("Неизвестная команда");
             }
         }
     }

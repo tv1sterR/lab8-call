@@ -6,7 +6,6 @@ import java.nio.charset.StandardCharsets;
 
 public class CallSignaling {
 
-    // инициатор звонка
     public static void initiateCall(P2PNode node, Socket socket) {
         try (socket;
              BufferedReader in = new BufferedReader(
@@ -14,18 +13,30 @@ public class CallSignaling {
              PrintWriter out = new PrintWriter(
                      new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true)) {
 
-            // отправляем команду CALL_START + свой ник + свой UDP-порт
             out.println("CALL_START " + node.getNickname() + " " + node.getUdpPort());
+            System.out.println("[SIGNAL] Отправлено: CALL_START " + node.getNickname() + " " + node.getUdpPort());
 
-            // ждём ответ
             String line = in.readLine();
-            if (line == null) return;
+            if (line == null) {
+                System.out.println("[SIGNAL] Соединение закрыто собеседником");
+                return;
+            }
 
             if (line.startsWith("CALL_ACCEPTED")) {
                 System.out.println("[SIGNAL] Звонок принят: " + line);
-                // здесь позже запустим UDP-аудио
+                String[] parts = line.split("\\s+");
+                String peerNick = parts[1];
+                int peerUdpPort = Integer.parseInt(parts[2]);
+                System.out.println("[SIGNAL] Собеседник: " + peerNick + ", его UDP порт: " + peerUdpPort);
+
+                String peerHost = socket.getInetAddress().getHostAddress();
+                System.out.println("[AUDIO] Запуск аудио к " + peerHost + ":" + peerUdpPort);
+                node.startAudio(peerHost, peerUdpPort);
+
             } else if (line.startsWith("CALL_REJECTED")) {
-                System.out.println("[SIGNAL] Звонок отклонён");
+                System.out.println("[SIGNAL] Звонок отклонён: " + line);
+            } else {
+                System.out.println("[SIGNAL] Неизвестная команда: " + line);
             }
 
         } catch (IOException e) {
@@ -33,7 +44,6 @@ public class CallSignaling {
         }
     }
 
-    // обработка входящего соединения
     public static void handleIncomingConnection(P2PNode node, Socket socket) {
         try (socket;
              BufferedReader in = new BufferedReader(
@@ -42,20 +52,28 @@ public class CallSignaling {
                      new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true)) {
 
             String line = in.readLine();
-            if (line == null) return;
+            if (line == null) {
+                System.out.println("[SIGNAL] Пустое соединение");
+                return;
+            }
 
             if (line.startsWith("CALL_START")) {
                 String[] parts = line.split("\\s+");
-                String peerNick = parts[1];
-                int peerUdpPort = Integer.parseInt(parts[2]);
+                String peerNick = parts.length > 1 ? parts[1] : "UNKNOWN";
+                int peerUdpPort = parts.length > 2 ? Integer.parseInt(parts[2]) : -1;
 
                 System.out.println("[SIGNAL] Входящий звонок от " + peerNick +
                         " (UDP порт собеседника: " + peerUdpPort + ")");
 
-                // для простоты — всегда принимаем
                 out.println("CALL_ACCEPTED " + node.getNickname() + " " + node.getUdpPort());
+                System.out.println("[SIGNAL] Отправлено: CALL_ACCEPTED " + node.getNickname() + " " + node.getUdpPort());
 
-                // здесь позже запустим UDP-аудио
+                String peerHost = socket.getInetAddress().getHostAddress();
+                System.out.println("[AUDIO] Запуск аудио к " + peerHost + ":" + peerUdpPort);
+                node.startAudio(peerHost, peerUdpPort);
+
+            } else {
+                System.out.println("[SIGNAL] Неизвестная команда: " + line);
             }
 
         } catch (IOException e) {
